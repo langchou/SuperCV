@@ -130,3 +130,4 @@ package-lock.json
 
 server_data
 yarn.lock
+go-server
