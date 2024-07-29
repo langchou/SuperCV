@@ -132,5 +132,4 @@ server_data
 yarn.lock
 
 # Go-Server
-server
 logs
