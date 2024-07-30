@@ -37,7 +37,8 @@ func createUserTable() error {
 	_, err = db.Exec(`
         CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
-            name VARCHAR(255) NOT NULL,
+            name VARCHAR(255) NOT NULL UNIQUE,
+			encrypted_dek VARCHAR(255) NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     `)
@@ -61,6 +62,7 @@ func createDeviceTable() error {
 			status BOOLEAN DEFAULT false,
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			icon VARCHAR(255),
 			FOREIGN KEY (user_name) REFERENCES users(name)
 		)
 	`)
@@ -95,16 +97,11 @@ func createDeviceTable() error {
 func init() {
 	var err error
 	// 替换以下连接字符串以匹配PostgreSQL配置
-	db, err = sql.Open("postgres", "host=localhost port=5432 user=jonty dbname=supercv password=abcd1234 sslmode=disable")
+	db, err = sql.Open("postgres", "host=localhost port=5432 user=jonty dbname=superCV password=abcd1234 sslmode=disable")
 	if err != nil {
 		panic(err)
 	}
 	// 创建表
-	err = createClipTable()
-	if err != nil {
-		logger.ErrorLogger.Printf("something wrong")
-	}
-
 	err = createUserTable()
 	if err != nil {
 		logger.ErrorLogger.Printf("something wrong")
@@ -115,6 +112,10 @@ func init() {
 		logger.ErrorLogger.Printf("something wrong")
 	}
 
+	err = createClipTable()
+	if err != nil {
+		logger.ErrorLogger.Printf("something wrong")
+	}
 }
 
 func SaveClipboard(clip model.Clip) error {
@@ -124,9 +125,9 @@ func SaveClipboard(clip model.Clip) error {
 
 func SaveUser(ctx context.Context, user model.User) error {
 	_, err := db.ExecContext(ctx, `
-	INSERT INTO users (name, created_at)
-    VALUES ($1, $2)
-	`, user.Name, time.Now())
+	INSERT INTO users (name, encrypted_dek, created_at)
+    VALUES ($1, $2, $3)
+	`, user.Name, user.EncryptedDEK, time.Now())
 
 	if err != nil {
 		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {
@@ -142,9 +143,9 @@ func SaveUser(ctx context.Context, user model.User) error {
 
 func SaveDevice(ctx context.Context, device model.Device) error {
 	_, err := db.ExecContext(ctx, `
-	INSERT INTO devices (name, uuid, user_name, status, created_at, updated_at)
-    VALUES ($1, $2, $3, $4, $5, $6)
-	`, device.Name, device.Uuid, device.UserName, device.Status, time.Now(), time.Now())
+	INSERT INTO devices (name, uuid, icon, user_name, status, created_at, updated_at)
+    VALUES ($1, $2, $3, $4, $5, $6, $7)
+	`, device.Name, device.Uuid, device.Icon, device.UserName, device.Status, time.Now(), time.Now())
 
 	if err != nil {
 		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {
